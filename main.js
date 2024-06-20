@@ -7,31 +7,32 @@ var map = new ol.Map({
     })
   ],
   view: new ol.View({
-    center: ol.proj.fromLonLat([106.8272, -6.1751]),
-    zoom: 16
+    center: ol.proj.fromLonLat([106, -2]), // Centered on Indonesia
+    zoom: 5 // Zoom level adjusted for better visibility
   })
 });
 
+// Define Jakarta's coordinates
+var jakartaCoordinates = [106.8272, -6.1751];
+
+// Create a vector source and layer for city markers
 var vectorSource = new ol.source.Vector();
 var vectorLayer = new ol.layer.Vector({
   source: vectorSource,
 });
 map.addLayer(vectorLayer);
 
-var clickListener; // Declare clickListener globally
-var markerEnabled = false; // Flag to track marker placement
-var markerCoordinates = []; // Array to store marker coordinates
-
-// Function to add marker
-function addMarker(coordinates) {
+// Function to add Jakarta marker
+function addJakartaMarker() {
   var marker = new ol.Feature({
-    geometry: new ol.geom.Point(coordinates),
+    geometry: new ol.geom.Point(ol.proj.fromLonLat(jakartaCoordinates)),
+    name: 'Jakarta' // Store city name in feature for tooltip
   });
 
   // Style for the marker
   var markerStyle = new ol.style.Style({
     image: new ol.style.Icon({
-      src: "https://cdn.jsdelivr.net/gh/Leaflet/Leaflet@1.7.1/dist/images/marker-icon.png",
+      src: 'https://cdn.jsdelivr.net/gh/Leaflet/Leaflet@1.7.1/dist/images/marker-icon.png',
     }),
   });
 
@@ -41,43 +42,39 @@ function addMarker(coordinates) {
   // Add the marker to the vector source
   vectorSource.addFeature(marker);
 
-  // Add coordinates to the array
-  markerCoordinates.push(coordinates);
+  return marker; // Return the feature for further interaction
+}
 
-  // Draw lines between consecutive markers
-  if (markerCoordinates.length > 1) {
-    var lineCoordinates = [markerCoordinates[markerCoordinates.length - 2], coordinates];
-    var line = new ol.Feature({
-      geometry: new ol.geom.LineString(lineCoordinates),
-    });
-    vectorSource.addFeature(line);
+// Add Jakarta marker
+var jakartaFeature = addJakartaMarker();
+
+// Style for the highlighted feature
+var highlightStyle = new ol.style.Style({
+  image: new ol.style.Icon({
+    src: 'https://cdn.jsdelivr.net/gh/Leaflet/Leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  }),
+});
+
+// Variable to hold the feature being highlighted
+var highlight;
+
+// Event listener for pointermove to handle city hover
+map.on('pointermove', function(event) {
+  var feature = map.forEachFeatureAtPixel(event.pixel, function(feature) {
+    return feature;
+  });
+
+  // Remove highlight from previously hovered feature
+  if (feature && feature === jakartaFeature) {
+    if (highlight) {
+      highlight.setStyle(null);
+    }
+    highlight = feature;
+    highlight.setStyle(highlightStyle);
+  } else {
+    if (highlight) {
+      highlight.setStyle(null);
+    }
+    highlight = null;
   }
-}
-
-// Function to handle keydown event
-function handleKeyDown(event) {
-  if (event.key === 'c' && !markerEnabled) {
-    console.log("c key pressed");
-    markerEnabled = true;
-    clickListener = map.on('click', handleMapClick);
-  }
-}
-
-// Function to handle keyup event
-function handleKeyUp(event) {
-  if (event.key === 'c' && markerEnabled) {
-    console.log("c key released");
-    markerEnabled = false;
-    ol.Observable.unByKey(clickListener);
-  }
-}
-
-// Function to handle map click event
-function handleMapClick(event) {
-  var coordinates = event.coordinate;
-  addMarker(coordinates);
-}
-
-// Listen for keydown and keyup events on the document
-document.addEventListener('keydown', handleKeyDown);
-document.addEventListener('keyup', handleKeyUp);
+});
